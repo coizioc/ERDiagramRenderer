@@ -38,7 +38,7 @@
             </ul>
             <h2>Output</h2>
             <ul>
-                <li>Output is <a href="https://mermaidjs.github.io">Mermaid</a> source code. You can find their online editor <a href="https://mermaidjs.github.io/mermaid-live-editor">here</a>.</li>
+                <li>Output is <a href="https://mermaidjs.github.io" target="_blank">Mermaid</a> source code. You can find their online editor <a href="https://mermaidjs.github.io/mermaid-live-editor" target="_blank">here</a>.</li>
                 <li>You may need to change the first line to get it to render better. Try <code>graph TD</code> instead of <code>graph LR</code>.</li>
                 <li>If the HTML in the entities doesn't render correctly in the online editor, change the configuration to <code>{ "theme": "default", "securityLevel": "loose" }</code>.</li>
                 <li>This does not currently support relationship attributes with the same name. You must manually update the output to reflect this or rename the attribute to prevent this.</li>
@@ -70,7 +70,9 @@ book(__ISBN__,title,year,price)
 shopping_basket(basket_id)
 customer(__email__,name,address,phone)
 warehouse(__code__,address,phone)
-
+video(__EIDR__,title,year)
+downloadable_video(price) ISA video
+bluray(price) ISA video
 
 RELATIONSHIPS:
 author,book,written_by
@@ -115,15 +117,22 @@ book,warehouse,stocks[number_in_stock]`;
                 }
 
                 function parseEntity(line) {
-                    parts = line.split('(');
-                    if(parts == line) {
+                    let inheritenceParts = line.split(' ISA ');
+                    let entityParts = inheritenceParts[0].split('(');
+                    if(entityParts == line) {
                         makeError("Missing '(' after entity name.");
                     }
 
-                    let name = parts[0];
-                    let attributes = parts[1];
+                    let name = entityParts[0];
+                    let attributes = entityParts[1];
 
-                    entities[name] = {attributes: []}
+                    entities[name] = {attributes: [], inheritsFrom: undefined}
+
+                    if(inheritenceParts.length > 1) {
+                        entities[name]['inheritsFrom'] = inheritenceParts[1];
+                        attributes = inheritenceParts[0].split('(')[1];
+                    }
+
                     if(attributes[attributes.length - 1] !== ')') {
                         makeError("Missing ')' after entity attributes.")
                     }
@@ -136,18 +145,18 @@ book,warehouse,stocks[number_in_stock]`;
                 }
 
                 function parseRelationship(line) {
-                    parts = line.split(',');
-                    if(parts.length < 3) {
+                    entityParts = line.split(',');
+                    if(entityParts.length < 3) {
                         makeError("Relationship syntax: 'entity,entity,relationship[attribute,...]'");
                     }
 
-                    let name = parts[parts.length - 1];
+                    let name = entityParts[entityParts.length - 1];
                     if(name.split('[').length > 1) {
-                        let parts = name.split('[');
-                        name = parts[0];
+                        let entityParts = name.split('[');
+                        name = entityParts[0];
                         relationships[name] = {entities: [], attributes: []};
 
-                        let attributes = parts[1];
+                        let attributes = entityParts[1];
                         if(attributes[attributes.length - 1] !== ']') {
                             makeError("Missing ']' after attributes.");
                         }
@@ -158,8 +167,8 @@ book,warehouse,stocks[number_in_stock]`;
                         relationships[name] = {entities: [], attributes: []};
                     }
 
-                    for(var i = 0; i < parts.length - 1; i++) {
-                        relationships[name]['entities'].push(parts[i]);
+                    for(var i = 0; i < entityParts.length - 1; i++) {
+                        relationships[name]['entities'].push(entityParts[i]);
                     }
                 }
 
@@ -197,6 +206,9 @@ book,warehouse,stocks[number_in_stock]`;
                         out += `${attribute}<br>`;
                     });
                     out += ']\n';
+                    if(entities[entity]['inheritsFrom'] !== undefined) {
+                        out += `${entity}-->${entities[entity]['inheritsFrom']}\n`;
+                    }
                 }
 
                 for(relationship of Object.keys(relationships)) {
@@ -207,8 +219,14 @@ book,warehouse,stocks[number_in_stock]`;
                 }
 
                 for(relationship of Object.keys(relationships)) {
+                    let i = 0;
                     relationships[relationship]['entities'].forEach(relEntity => {
-                        out += `${relationship}---${relEntity}\n`;
+                        if(i % 2 === 0) {
+                            out += `${relEntity}---${relationship}\n`;
+                        } else {
+                            out += `${relationship}---${relEntity}\n`;
+                        }
+                        i++;
                     });
                     relationships[relationship]['attributes'].forEach(attribute => {
                         out += `${attribute}-.->${relationship}\n`;
