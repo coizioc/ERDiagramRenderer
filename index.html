@@ -1,0 +1,223 @@
+<html>
+    <head>
+        <style>
+            #left, #right {
+                margin: 2.5%;
+                float: left;
+                width: 45%;
+            }
+            textarea {
+                width: 100%;
+            }
+            #input {
+                height: 20em;
+            }
+            #output {
+                height: 20em;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="left">
+            <textarea id="input"></textarea><br><br>
+            <button id="submit" onclick="convert()">Convert</button><br><br>
+            <textarea id="output"></textarea>
+        </div>
+        <div id="right">
+            <h1>ER Diagram Maker</h1>
+            <hr>
+            <h2>Syntax</h2>
+            <ul>
+                <li>Empty lines are ignored, except for the first.</li>
+                <li>Entity list starts with <code>ENTITIES:</code>.</li>
+                <li>Each entity is represented as follows: <code>entity_name(__primary_key__,attribute,...)</code></li>
+                <li>Entities are listed until the <code>RELATIONSHIPS:</code> keyword is found.</li>
+                <li>Relationship list starts with <code>RELATIONSHIPS:</code>.</li>
+                <li>Each relationship is represented as follows: <code>entity,entity,...,relationship_name[attribute,...]</code></li>
+                <li><code>[attribute,...]</code> is optional for relationships.</li>
+            </ul>
+            <h2>Output</h2>
+            <ul>
+                <li>Output is <a href="https://mermaidjs.github.io">Mermaid</a> source code. You can find their online editor <a href="https://mermaidjs.github.io/mermaid-live-editor">here</a>.</li>
+                <li>You may need to change the first line to get it to render better. Try <code>graph TD</code> instead of <code>graph LR</code>.</li>
+                <li>If the HTML in the entities doesn't render correctly in the online editor, change the configuration to <code>{ "theme": "default", "securityLevel": "loose" }</code>.</li>
+                <li>This does not currently support relationship attributes with the same name. You must manually update the output to reflect this or rename the attribute to prevent this.</li>
+                <li>This does not also currently support cardinality and participation constraints. </li>
+            </ul>
+        </div>
+        
+        <script
+			  src="https://code.jquery.com/jquery-3.4.1.min.js"
+			  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+			  crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.3.1/mermaid.min.js"></script>
+        <script>
+            
+            $(document).ready(() => {
+                /*
+                mermaid.initialize({
+                    startOnLoad: true,
+                    securityLevel:'loose',
+                    flowchart: {
+                        useMaxWidth: false
+                    }
+                });*/
+
+                let source = `ENTITIES:
+author(__name__,address,URL)
+publisher(__name__,address,URL)
+book(__ISBN__,title,year,price)
+shopping_basket(basket_id)
+customer(__email__,name,address,phone)
+warehouse(__code__,address,phone)
+
+
+RELATIONSHIPS:
+author,book,written_by
+publisher,book,published_by
+book,shopping_basket,contains[number_in_basket]
+shopping_basket,customer,basket_of
+book,warehouse,stocks[number_in_stock]`;
+
+                $('#input').val(source);
+            });
+
+            function convert() {
+                let input = $('#input').val();
+
+                var entRel = parse(input);
+                var graphDefinition = toMermaid(entRel['entities'], entRel['relationships']);
+
+                $('#output').val(graphDefinition);
+
+            }
+            
+
+            function parse(source) {
+                let currLine = 0;
+                let entities = {};
+                let relationships = {};
+                let lines = source.split(/\r?\n/);
+
+                function match(str, match) {
+                    if(str === match) {
+                        return true;
+                    } else {
+                        makeError(`Expect token '${match}'.`);
+                        return false;
+                    }
+                }
+
+                function makeError(msg) {
+                    let errMsg = `[line ${currLine + 1}] ${msg}`;
+                    $('#output').text(errMsg);
+                    console.log(errMsg);
+                }
+
+                function parseEntity(line) {
+                    parts = line.split('(');
+                    if(parts == line) {
+                        makeError("Missing '(' after entity name.");
+                    }
+
+                    let name = parts[0];
+                    let attributes = parts[1];
+
+                    entities[name] = {attributes: []}
+                    if(attributes[attributes.length - 1] !== ')') {
+                        makeError("Missing ')' after entity attributes.")
+                    }
+                    attributes.substring(0, attributes.length - 1).split(',').forEach(attribute => {
+                        if(attribute[0] === '_' && attribute[1] === '_' && attribute[attribute.length - 1] === '_' && attribute[attribute.length - 2] === '_') {
+                            attribute = `<u>${attribute.substring(2,attribute.length-2)}</u>`;
+                        }
+                        entities[name]["attributes"].push(attribute);
+                    });
+                }
+
+                function parseRelationship(line) {
+                    parts = line.split(',');
+                    if(parts.length < 3) {
+                        makeError("Relationship syntax: 'entity,entity,relationship[attribute,...]'");
+                    }
+
+                    let name = parts[parts.length - 1];
+                    if(name.split('[').length > 1) {
+                        let parts = name.split('[');
+                        name = parts[0];
+                        relationships[name] = {entities: [], attributes: []};
+
+                        let attributes = parts[1];
+                        if(attributes[attributes.length - 1] !== ']') {
+                            makeError("Missing ']' after attributes.");
+                        }
+                        for(attribute of attributes.substring(0, attributes.length - 1).split(',')) {
+                            relationships[name]["attributes"].push(attribute);
+                        }
+                    } else {
+                        relationships[name] = {entities: [], attributes: []};
+                    }
+
+                    for(var i = 0; i < parts.length - 1; i++) {
+                        relationships[name]['entities'].push(parts[i]);
+                    }
+                }
+
+                if(!match(lines[0], "ENTITIES:")) {
+                    return {entities: {}, relationships: {}}
+                }
+
+                // Parse entities:
+                for(currLine = 1; currLine < lines.length; currLine++) {
+                    if(lines[currLine] === "") {
+                        continue;
+                    } else if(lines[currLine] == 'RELATIONSHIPS:') {
+                        currLine++;
+                        break;
+                    }
+                    parseEntity(lines[currLine]);
+                }
+
+                // Parse relationships:
+                for(; currLine < lines.length; currLine++) {
+                    if(lines[currLine] === "") {
+                        continue;
+                    }
+                    parseRelationship(lines[currLine]);
+                }
+
+                return {entities: entities, relationships: relationships};
+            }
+
+            function toMermaid(entities, relationships) {
+                let out = "graph LR\n";
+                for(entity of Object.keys(entities)) {
+                    out += `style ${entity} fill:#fff,stroke:#000;\n${entity}[<b>${entity}</b><hr>`;
+                    entities[entity]['attributes'].forEach(attribute => {
+                        out += `${attribute}<br>`;
+                    });
+                    out += ']\n';
+                }
+
+                for(relationship of Object.keys(relationships)) {
+                    out += `style ${relationship} fill:#E6F9FE,stroke:000;\n${relationship}{${relationship}}\n`;
+                    relationships[relationship]['attributes'].forEach(attribute => {
+                        out += `style ${attribute} fill:#fff,stroke:#000;\n${attribute}[${attribute}]\n`;
+                    });
+                }
+
+                for(relationship of Object.keys(relationships)) {
+                    relationships[relationship]['entities'].forEach(relEntity => {
+                        out += `${relationship}---${relEntity}\n`;
+                    });
+                    relationships[relationship]['attributes'].forEach(attribute => {
+                        out += `${attribute}-.->${relationship}\n`;
+                    });
+                }
+                return out;
+            }
+
+            
+        </script>
+        </body>
+</html>
