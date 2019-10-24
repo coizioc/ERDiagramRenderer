@@ -76,22 +76,12 @@ Lexer.scanTokens = source => {
         let c = advance();
         switch(c) {
             case tokenType.LBRACE:
-                addToken(tokenType.LBRACE);
-                break;
             case tokenType.RBRACE:
-                addToken(tokenType.RBRACE);
-                break;
             case tokenType.LPAREN:
-                addToken(tokenType.LPAREN);
-                break;
             case tokenType.RPAREN:
-                addToken(tokenType.RPAREN);
-                break;
             case tokenType.COMMA:
-                addToken(tokenType.COMMA);
-                break;
             case tokenType.COLON:
-                addToken(tokenType.COLON);
+                addToken(c);
                 break;
             case '_':
                 if(match('_')) {
