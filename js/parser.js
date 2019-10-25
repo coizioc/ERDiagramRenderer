@@ -9,6 +9,10 @@ Parser.toMermaid = (source) => {
         
         function eat(type) {
             function writeErr() {
+                if(errMsg !== '') {
+                    return;
+                }
+
                 // Make NEWLINE and EOF tokens human readable.
                 if(match(tokenType.NEWLINE)) {
                     tokens[currToken].type = '\\n';
@@ -28,6 +32,7 @@ Parser.toMermaid = (source) => {
 
             if(!match(type)) {
                 writeErr();
+                return tokens[currToken - 1];
             } else {
                 currToken++;
                 if(type == tokenType.NEWLINE) {
@@ -59,17 +64,19 @@ Parser.toMermaid = (source) => {
             }
         }
     
-        /* entity | IDENT LPAREN attribute (COMMA attribute)* RPAREN (ISA IDENT) */
+        /* entity | IDENT LPAREN (attribute (COMMA attribute)*) RPAREN (ISA IDENT) */
         function entity() {
             let entityName = eat(tokenType.IDENT).lexeme;
             entities[entityName] = Entity.new();
             eat(tokenType.LPAREN);
-            let currAttribute = attribute();
-            entities[entityName].attributes.push(currAttribute);
-            while(match(tokenType.COMMA)) {
-                eat(tokenType.COMMA);
-                currAttribute = attribute();
+            if(!match(tokenType.RPAREN)) {
+                let currAttribute = attribute();
                 entities[entityName].attributes.push(currAttribute);
+                while(match(tokenType.COMMA)) {
+                    eat(tokenType.COMMA);
+                    currAttribute = attribute();
+                    entities[entityName].attributes.push(currAttribute);
+                }
             }
             eat(tokenType.RPAREN);
             if(match(tokenType.ISA)) {
