@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
 <html>
     <head>
         <style>
@@ -19,71 +21,141 @@
     </head>
     <body>
         <div id="left">
-            <textarea id="input"></textarea><br><br>
-            <button id="submit" onclick="convert()">Convert</button><br><br>
-            <textarea id="output"></textarea>
+            <textarea id="input" class="lined"></textarea><br><br>
+            <button id="convertToSVG" onclick="convert()">Convert to SVG</button>&nbsp;
+            <button id="convertToPNG" onclick="convertPNG()">Convert to PNG</button><br><br>
+            <textarea id="output" readonly></textarea>
         </div>
         <div id="right">
             <h1>ER Diagram Maker</h1>
             <hr>
             <h2>Syntax</h2>
             <ul>
-                <li>Empty lines are ignored, except for the first.</li>
+                <li>Empty lines are ignored, except for the first, which must be <code>ENTITIES:</code>.</li>
+                <li>Line comments are made with <code>#</code>.</li>
                 <li>Entity list starts with <code>ENTITIES:</code>.</li>
                 <li>Each entity is represented as follows: <code>entity_name(__primary_key__,attribute,...) ISA entity_name</code></li>
-                <li><code>ISA entity_name</code> is optional for each entity.</li>
+                <li><code>ISA entity_name</code> is optional for each entity, which represents generalization.</li>
                 <li>Entities are listed until the <code>RELATIONSHIPS:</code> keyword is found.</li>
                 <li>Relationship list starts with <code>RELATIONSHIPS:</code>.</li>
                 <li>Each relationship is represented as follows: <code>entity,entity,...,relationship_name[attribute,...]</code></li>
                 <li><code>[attribute,...]</code> is optional for each relationship.</li>
+                <li>A weak entity is marked with <code>IS WEAK</code> following the relationship name (or attributes, if they exist).</li>
+                <li>Cardinality/Participation constraints are represented using parentheses after each entity in a relationship. If no parentheses are found, then it is assumed to be <code>(*)</code>. <code>1</code> represents 'one', <code>*</code> represents 'many', and <code>+</code> represents full participation.</li>
+                <li>Aggregation can be represented using <code>AGGREGATION aggregation_name IS</code>, followed by the normal relationship syntax.</li>            
             </ul>
-            <h2>Output Instructions</h2>
-            <ul>
-                <li>Output is <a href="https://mermaidjs.github.io" target="_blank">Mermaid</a> source code. User their online editor <a href="https://mermaidjs.github.io/mermaid-live-editor" target="_blank">here</a>.</li>
-                <li>You may need to change the first line to get it to render better. Try <code>graph TD</code> instead of <code>graph LR</code>.</li>
-                <li>If the HTML in the entities doesn't render correctly in the online editor, change the configuration to <code>{ "theme": "default", "securityLevel": "loose" }</code>.</li>
-                <li>This does not currently support cardinality and participation constraints. </li>
-            </ul>
+        </div>
+        <div style="clear:both;"></div>
+        <hr>
+        <div id="graph" style="text-align:center;">
+            <p>Output will go here.</p>
         </div>
         
         <script
 			  src="https://code.jquery.com/jquery-3.4.1.min.js"
 			  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
 			  crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.3.1/mermaid.min.js"></script>
+        <script src="js/jquery-linedtextarea.js"></script>
+        <script src="js/viz.js"></script>
+        <script src="js/full.render.js"></script>
         <script src="js/types.js"></script>
         <script src="js/lexer.js"></script>
         <script src="js/parser.js"></script>
         <script>
             $(document).ready(() => {
                 let source = `ENTITIES:
-author(__name__,address,URL)
-publisher(__name__,address,URL)
-book(__ISBN__,title,year,price)
-shopping_basket(basket_id)
-customer(__email__,name,address,phone)
-warehouse(__code__,address,phone)
-video(__EIDR__,title,year)
-downloadable_video(price) ISA video
-bluray(price) ISA video
+# This is a line comment, woo!
+student(__ID__,name,tot_cred)
+instructor(__ID__,name,salary)
+advisor(advising_room, advising_timeslot) ISA instructor
+project(__ID__,budget,room_number)
+evaluation(__ID__,status)
+department(__dept_name__,building,budget)
+course(__course_id__,title,credits)
+section(__sec_id__,__semester__,__year__)
+time_slot(__time_slot_id__,day,start_time,end_time)
+classroom(__building__,__room_number__,capacity)
 
 RELATIONSHIPS:
-author,book,written_by
-publisher,book,published_by
-book,shopping_basket,contains[number_in_basket]
-shopping_basket,customer,basket_of
-book,warehouse,stocks[number_in_stock]`;
+# (*) optional in student, is assumed if no cardinality given.
+advisor(1),student(*),advises
+instructor(+),department,works_for
+instructor,section(+),teaches
+AGGREGATION proj_guide IS instructor(1),student,project,is_guided_by
+evaluation,proj_guide(1),evaluates
+student,section,takes[grade]
+student(+),department,is_part_of
+course(+),department(1),is_taught_by
+course,course,prereq
+section(+),course(1),is_an_instance_of IS WEAK
+section(+),classroom(1),is_taught_in
+section(+),time_slot(1),is_taught_during`;
 
                 $('#input').val(source);
+                $('#output').val('Errors or Dot source code will appear here.');
             });
 
             function convert() {
                 let input = $('#input').val();
 
-                var graphDefinition = Parser.toMermaid(input);
-
+                var graphDefinition = Parser.toGraphDefinition(input);
                 $('#output').val(graphDefinition);
 
+                // First word of valid graph definition is 'digraph'.
+                if(graphDefinition[0] === 'd') {
+                    var viz = new Viz();
+
+                    viz.renderSVGElement(graphDefinition)
+                    .then(function(element) {
+                        $('#graph').html(element);
+                    })
+                    .catch(error => {
+                        viz = new Viz();
+                        $('#graph').html(`<p>Render error: ${error}</p>`);
+                    });
+                }
+            }
+
+            function convert() {
+                let input = $('#input').val();
+
+                var graphDefinition = Parser.toGraphDefinition(input);
+                $('#output').val(graphDefinition);
+
+                // First word of valid graph definition is 'digraph'.
+                if(graphDefinition[0] === 'd') {
+                    var viz = new Viz();
+
+                    viz.renderSVGElement(graphDefinition)
+                    .then(function(element) {
+                        $('#graph').html(element);
+                    })
+                    .catch(error => {
+                        viz = new Viz();
+                        $('#graph').html(`<p>Render error: ${error}</p>`);
+                    });
+                }
+            }
+
+            function convertPNG() {
+                let input = $('#input').val();
+
+                var graphDefinition = Parser.toGraphDefinition(input);
+                $('#output').val(graphDefinition);
+
+                // First word of valid graph definition is 'digraph'.
+                if(graphDefinition[0] === 'd') {
+                    var viz = new Viz();
+
+                    viz.renderImageElement(graphDefinition)
+                    .then(function(element) {
+                        $('#graph').html(element);
+                    })
+                    .catch(error => {
+                        viz = new Viz();
+                        $('#graph').html(`<p>Render error: ${error}</p>`);
+                    });
+                }
             }
         </script>
         </body>

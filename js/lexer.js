@@ -81,6 +81,9 @@ Lexer.scanTokens = source => {
             case tokenType.RPAREN:
             case tokenType.COMMA:
             case tokenType.COLON:
+            case tokenType.ONE:
+            case tokenType.PLUS:
+            case tokenType.STAR:
                 addToken(c);
                 break;
             case '_':
@@ -88,6 +91,11 @@ Lexer.scanTokens = source => {
                     addToken(tokenType.D_UNDERSCORE);
                 } else {
                     identifier();
+                }
+                break;
+            case '#':
+                while(peek() != '\n') {
+                    advance();
                 }
                 break;
             case ' ':
