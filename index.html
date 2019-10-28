@@ -22,9 +22,10 @@
     <body>
         <div id="left">
             <textarea id="input" class="lined"></textarea><br><br>
-            <button id="convertToSVG" onclick="convert()">Convert to SVG</button>&nbsp;
-            <button id="convertToPNG" onclick="convertPNG()">Convert to PNG</button><br><br>
-            <textarea id="output" readonly></textarea>
+            <button id="convertToDot" onclick="convertSource()">Convert to Dot source</button><br><br>
+            <textarea id="output"></textarea><br><br>
+            <button id="convertToSVG" onclick="convertSVG()">Render as SVG</button>&nbsp;
+            <button id="convertToPNG" onclick="convertPNG()">Render as PNG</button><br><br>
         </div>
         <div id="right">
             <h1>ER Diagram Maker</h1>
@@ -55,7 +56,6 @@
 			  src="https://code.jquery.com/jquery-3.4.1.min.js"
 			  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
 			  crossorigin="anonymous"></script>
-        <script src="js/jquery-linedtextarea.js"></script>
         <script src="js/viz.js"></script>
         <script src="js/full.render.js"></script>
         <script src="js/types.js"></script>
@@ -95,67 +95,41 @@ section(+),time_slot(1),is_taught_during`;
                 $('#output').val('Errors or Dot source code will appear here.');
             });
 
-            function convert() {
+            function convertSource() {
                 let input = $('#input').val();
 
                 var graphDefinition = Parser.toGraphDefinition(input);
                 $('#output').val(graphDefinition);
-
-                // First word of valid graph definition is 'digraph'.
-                if(graphDefinition[0] === 'd') {
-                    var viz = new Viz();
-
-                    viz.renderSVGElement(graphDefinition)
-                    .then(function(element) {
-                        $('#graph').html(element);
-                    })
-                    .catch(error => {
-                        viz = new Viz();
-                        $('#graph').html(`<p>Render error: ${error}</p>`);
-                    });
-                }
             }
 
-            function convert() {
-                let input = $('#input').val();
+            function convertSVG() {
+                let input = $('#output').val();
 
-                var graphDefinition = Parser.toGraphDefinition(input);
-                $('#output').val(graphDefinition);
+                var viz = new Viz();
 
-                // First word of valid graph definition is 'digraph'.
-                if(graphDefinition[0] === 'd') {
-                    var viz = new Viz();
-
-                    viz.renderSVGElement(graphDefinition)
-                    .then(function(element) {
-                        $('#graph').html(element);
-                    })
-                    .catch(error => {
-                        viz = new Viz();
-                        $('#graph').html(`<p>Render error: ${error}</p>`);
-                    });
-                }
+                viz.renderSVGElement(input)
+                .then(function(element) {
+                    $('#graph').html(element);
+                })
+                .catch(error => {
+                    viz = new Viz();
+                    $('#graph').html(`<p>Render error: ${error}</p>`);
+                });
             }
 
             function convertPNG() {
-                let input = $('#input').val();
+                let input = $('#output').val();
 
-                var graphDefinition = Parser.toGraphDefinition(input);
-                $('#output').val(graphDefinition);
+                var viz = new Viz();
 
-                // First word of valid graph definition is 'digraph'.
-                if(graphDefinition[0] === 'd') {
-                    var viz = new Viz();
-
-                    viz.renderImageElement(graphDefinition)
-                    .then(function(element) {
-                        $('#graph').html(element);
-                    })
-                    .catch(error => {
-                        viz = new Viz();
-                        $('#graph').html(`<p>Render error: ${error}</p>`);
-                    });
-                }
+                viz.renderImageElement(input)
+                .then(function(element) {
+                    $('#graph').html(element);
+                })
+                .catch(error => {
+                    viz = new Viz();
+                    $('#graph').html(`<p>Render error: ${error}</p>`);
+                });
             }
         </script>
         </body>

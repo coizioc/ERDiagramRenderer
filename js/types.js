@@ -16,6 +16,7 @@ const tokenType = {
     IDENT: 'IDENT',
     // Keywords
     AGGREGATION: 'AGGREGATION',
+    DISJOINT: 'DISJOINT',
     ENTITIES: 'ENTITIES',
     IS: 'IS',
     ISA: 'ISA',
@@ -39,11 +40,11 @@ Token.new = (line, type, lexeme) => {
 let Entity = {};
 
 Entity.new = () => {
-    return {attributes: [], inheritsFrom: undefined};
+    return {attributes: [], inheritsFrom: undefined, isDisjoint: false};
 }
 
 let Relationship = {};
 
 Relationship.new = () => {
-    return {attributes: [], entities: []};
+    return {attributes: [], entities: [], cardinalities: []};
 }

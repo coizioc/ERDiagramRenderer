@@ -336,7 +336,6 @@ Parser.toGraphDefinition = (source) => {
          for(relationship of Object.keys(relationships)) {
              line = `${relationship}[shape=diamond style=filled fillcolor="#E6F9FE" label="${relationship}"`;
 
-             console.log(`${relationship} in ${weak_entities}: ${relationship in weak_entities}.`);
              if(weak_entities.includes(relationship)) {
                 line += ' peripheries=2';
              }
