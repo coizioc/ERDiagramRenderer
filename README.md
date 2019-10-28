@@ -1,3 +1,1 @@
-# ERtoMermaid
-
-ER diagram to Mermaid source code generator.
+# E-R Diagram Renderer
