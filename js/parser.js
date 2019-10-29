@@ -264,6 +264,8 @@ Parser.toGraphDefinition = (source) => {
                         // Swapping the order of every other link makes the output look better.
                         if(aggregations[relEntity] !== undefined) {
                             addLine(`${relationship} -> ${aggregations[relEntity]} [lhead=cluster_${relEntity}]`);
+                        } else if(i % 2 === 0) {
+                            addLine(`${relEntity} -> ${relationship} [dir=back]`);
                         } else {
                             addLine(`${relationship} -> ${relEntity}`);
                         }
