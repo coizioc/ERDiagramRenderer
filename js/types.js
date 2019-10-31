@@ -43,6 +43,10 @@ Entity.new = () => {
     return {attributes: [], inheritsFrom: undefined, isDisjoint: false};
 }
 
+Entity.newAttribute = (name, datatype) => {
+    return {name: name, datatype: datatype};
+}
+
 let Relationship = {};
 
 Relationship.new = () => {
