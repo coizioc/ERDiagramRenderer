@@ -254,7 +254,12 @@ Parser.generateDotSource = (entRel) => {
                     if(aggregations[relEntity] !== undefined) {
                         addLine(`${relationship} -> ${aggregations[relEntity]} [lhead=cluster_${relEntity}]`);
                     } else if(i % 2 === 0) {
-                        addLine(`${relEntity} -> ${relationship}`);
+                        // Handle arrow direction.
+                        if(matchTokenType === tokenType.ONE) {
+                            addLine(`${relEntity} -> ${relationship} [dir=back]`);
+                        } else {
+                            addLine(`${relEntity} -> ${relationship}`);
+                        }
                     } else {
                         addLine(`${relationship} -> ${relEntity}`);
                     }
